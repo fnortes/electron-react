@@ -18,7 +18,7 @@ export default function Spinner({ text = '' }: Props) {
   const { loading } = useContext(TweetsContext);
 
   return loading ? (
-    <div id="loader-wrapper">
+    <div id="loader-wrapper" data-testid="loader-wrapper">
       <div id="loader" />
       {text.length > 0 ? <p>{text}</p> : null}
     </div>
