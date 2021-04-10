@@ -30,3 +30,8 @@ export interface Action {
     htmlTweets?: string;
   };
 }
+
+export interface TwitterResponse {
+  status: string;
+  html: string;
+}

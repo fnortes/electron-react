@@ -2,12 +2,36 @@ import React from 'react';
 import { act } from 'react-dom/test-utils';
 import '@testing-library/jest-dom';
 import { render } from '@testing-library/react';
+import { ipcRenderer } from 'electron';
 import Context, {
   ContextProps,
   TweetsContextProvider,
 } from '../../contexts/TweetsContext';
 
 import * as scripts from '../../utils/scripts';
+
+const mockResponse = {
+  status: 'ok',
+  html: '<a style="display:none;">Test link</a>',
+};
+
+const invoke = (channel: string, ...args: any[]) =>
+  Promise.resolve(mockResponse);
+
+jest.mock(
+  'electron',
+  () => {
+    const mElectron = {
+      ipcRenderer: {
+        on: jest.fn(),
+        send: jest.fn(),
+        invoke,
+      },
+    };
+    return mElectron;
+  },
+  { virtual: true }
+);
 
 let contextData: ContextProps;
 describe('TweetsContextProvider', () => {
@@ -34,14 +58,6 @@ describe('TweetsContextProvider', () => {
 
     expect(contextData.search).toEqual('test');
 
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () =>
-          Promise.resolve({ html: '<a>Test link</a><script></script>' }),
-      } as Response)
-    );
-
     jest
       .spyOn(scripts, 'default')
       .mockImplementation((selector: string) => null);
@@ -51,19 +67,14 @@ describe('TweetsContextProvider', () => {
     });
 
     expect(contextData.htmlTweets).toEqual(
-      '<a>Test style="display:none;" link</a>'
+      '<a style="display:none;">Test link</a>'
     );
     expect(contextData.lastSearchs.length).toEqual(1);
     expect(contextData.search).toEqual('http://www.test.com');
     expect(contextData.loading).toBeFalsy();
 
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: false,
-        json: () =>
-          Promise.resolve({ html: '<a>Test link</a><script></script>' }),
-      } as Response)
-    );
+    mockResponse.status = 'ko';
+    mockResponse.html = `<span class="error">Sorry, we can't load the information for that. It may have been deleted or made private. Please try again.</span>`;
 
     await act(async () => {
       contextData.loadTweets('http://www.test.com');

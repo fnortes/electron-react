@@ -11,10 +11,12 @@
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 import path from 'path';
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
+import channels from './utils/constants';
+import publish from './services/twitter';
 
 export default class AppUpdater {
   constructor() {
@@ -129,4 +131,12 @@ app.on('activate', () => {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (mainWindow === null) createWindow();
+});
+
+ipcMain.handle(channels.FETCH_TWEETS_ON_MAIN, async (_event, ...args) => {
+  const url = `https://publish.twitter.com/oembed?url=${encodeURI(
+    args[0]
+  )}&partner=&hide_thread=false`;
+
+  return publish(url);
 });

@@ -1,9 +1,10 @@
+import { ipcRenderer } from 'electron';
 import React, { useReducer } from 'react';
-import publish from '../services/twitter';
 import injectTwitterScript from '../utils/scripts';
 import { CONTEXT_CONFIG, INITIAL_STATE } from './constants';
-import { ACTIONS } from './interfaces';
+import { ACTIONS, TwitterResponse } from './interfaces';
 import reducer from './reducer';
+import channels from '../utils/constants';
 
 /**
  * Define the interface of the context.
@@ -126,7 +127,7 @@ export const TweetsContextProvider = ({ children }: Props) => {
    * Function to load the new Tweets on screen.
    * @param newSearch Value of the new search if a last user search is clicked. Else null.
    */
-  const loadTweets = (newSearch: string | null) => {
+  const loadTweets = async (newSearch: string | null) => {
     show();
 
     let searchToUse = search;
@@ -136,14 +137,18 @@ export const TweetsContextProvider = ({ children }: Props) => {
       searchToUse = newSearch;
     }
 
-    publish(searchToUse)
-      .then((res) => onSuccessSearch(res, searchToUse))
-      .catch(() => {
-        setHtmlTweets(
-          `<span class="error">Sorry, we can't load the information for that. It may have been deleted or made private. Please try again.</span>`
-        );
-        hide();
-      });
+    const result: TwitterResponse = await ipcRenderer.invoke(
+      channels.FETCH_TWEETS_ON_MAIN,
+      searchToUse
+    );
+
+    if (result.status === 'ok') {
+      onSuccessSearch(result.html, searchToUse);
+    } else {
+      setHtmlTweets(result.html);
+    }
+
+    hide();
   };
 
   return (
